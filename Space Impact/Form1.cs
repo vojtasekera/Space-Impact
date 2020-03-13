@@ -18,27 +18,25 @@ namespace Space_Impact
         }
 
         Map map;
-        static int map_width = 75;
-        static int spawnbox = 10;
-        static int map_height = 45;
-        static int scale = 20;
-        Bitmap canvas = new Bitmap(map_width * scale, map_height * scale);
-        
-
+        Graphics g;
+        Bitmap canvas;
 
         private void bStart_Click(object sender, EventArgs e)
         {
-            map = new Map(map_width, map_height, spawnbox);
-            bStart.Visible = false;
+            canvas = new Bitmap(Data.map_width, Data.map_height);
+            map = new Map(Data.map_width, Data.map_height, Data.spawnbox);
+            map.SetPlayer(3); //TODO
+            g = Graphics.FromImage(canvas);
+
             timer.Start();
         }
 
         private void timer_Tick(object sender, EventArgs e)
         {
+            
             map.Update();
-            Graphics g = CreateGraphics();
             map.DrawMap(g, canvas);
-            pictureBox1.Image = (Image)canvas;
+            pictureBox1.Image = canvas;
             Refresh();
         }
     }
