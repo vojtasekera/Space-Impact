@@ -8,8 +8,6 @@ using System.Windows.Forms;
 
 namespace Space_Impact
 {
-    delegate void M();
-
     enum State {pause, fight, spawn, loss, win}
 
     class Rect
@@ -18,10 +16,10 @@ namespace Space_Impact
         public int y = 0;
         public int width, height;
 
-        int left    {get => x;}
-        int right   {get => x + width;}
-        int top     {get => y;}
-        int bottom  {get => y + height;}
+        public int left    {get => x;}
+        public int right   {get => x + width;}
+        public int top     {get => y;}
+        public int bottom  {get => y + height;}
 
         public bool CollidesWith(Rect rect)
         {
@@ -39,6 +37,13 @@ namespace Space_Impact
             else return false;
         }
 
+        public bool IsContainedIn(Rect rect)
+        {
+            if (top >= rect.top && bottom <= rect.bottom && 
+                left >= rect.left && right <= rect.right) return true;
+            else return false;
+        }
+
         public Rect()
         {
 
@@ -49,10 +54,14 @@ namespace Space_Impact
             width = w;
             height = h;
         }
+
     }
 
     class Player : Rect
     {
+        enum Status {normal, damaged};
+
+        Status status = Status.normal;
         public Map map;
         int health;
         Visuals visuals;
@@ -66,13 +75,38 @@ namespace Space_Impact
             }
         }
 
+        public void Draw(Graphics sender)
+        {
+            visuals.Draw(sender);
+        }
+
+        public void Up()
+        {
+            if (top >= map.top) y--;
+        }
+
+        public void Down()
+        {
+            if (bottom <= map.bottom) y++;
+        }
+
+        public void Right()
+        {
+            if (right < map.right) x++;
+        }
+        public void Left()
+        {
+            if (left > map.left) x--;
+        }
         public Player(int _x, int _y, int h, Map m):base(_x, _y)
         {
+            x = _x;
+            y = _y;
             health = h;
             map = m;
             height = Data.player_height;
             width = Data.player_width;
-            //TODO: hero visual
+            visuals = new Visuals(Data.player_damaged_texture, this);
         }
     }
 
@@ -80,11 +114,9 @@ namespace Space_Impact
     {
         Rect spawnbox;
 
-        public State state;
+        public State state = State.spawn;
 
-        Player player;
-
-        public M endgame;
+        public Player player;
 
         List<MovingObject> list_of_moving = new List<MovingObject>();
 
@@ -95,20 +127,23 @@ namespace Space_Impact
 
         public void SetPlayer(int h)
         {
-            player = new Player(0, height/2, h, this);
+            player = new Player( Data.player_spawn_x, height/2 , h, this);
+        }
+
+        public void Remove(MovingObject member)
+        {
+            list_of_moving.Remove(member);
         }
 
         public void Update()
         {
             foreach (MovingObject member in list_of_moving)
             {
-                member.behaviour.Move();
+                member.Move();
 
                 if  (!member.CollidesWith(spawnbox))
                 {
-                    list_of_moving.Remove(member);
-                    //((IDisposable)member).Dispose();
-
+                    member.Destroy();
                 }
             }
 
@@ -124,16 +159,18 @@ namespace Space_Impact
             }
         }
 
-        public void DrawMap(Graphics g, Bitmap canvas)
+        Brush brush = new SolidBrush(Data.bg_color);
+        public void DrawMap(Graphics g)
         {
-            Brush bg_brush = Brushes.Aquamarine;
             Brush fg_brush = Brushes.Black;
-            g.FillRectangle(bg_brush, 0,0, canvas.Width, canvas.Height);
+            g.FillRectangle(brush, g.ClipBounds);
 
             foreach (MovingObject member in list_of_moving)
             {
                 g.FillRectangle(fg_brush, member.x, member.y, 20, 20);
             }
+
+            player.Draw(g);
         }
     }
 
@@ -204,8 +241,24 @@ namespace Space_Impact
     class MovingObject : Rect
     {
         public Map map;
-        public Behaviour behaviour;
+        Behaviour behaviour;
         Visuals visuals;
+
+        public void Destroy()
+        {
+            map.Remove(this);
+            ((IDisposable)this).Dispose();
+        }
+
+        public void Draw(Graphics sender)
+        {
+            visuals.Draw(sender);
+        }
+
+        public void Move()
+        {
+            behaviour.Move();
+        }
     }
 
     class MortalObject : MovingObject
@@ -227,7 +280,7 @@ namespace Space_Impact
         }
     }
 
-    class Texture
+    public class Texture
     {
         public int offx, offy;
         public List<Bitmap> images;
@@ -239,15 +292,15 @@ namespace Space_Impact
             images = new List<Bitmap>();
             foreach (string name in file_names)
             {
-                images.Add(new Bitmap(name));
+                images.Add((Bitmap)Bitmap.FromFile(name));
             }
         }
     }
 
     class Visuals
     {
-        MovingObject parent;
-        int tick;
+        Rect parent;
+        int tick = 0;
 
         Texture data;
 
@@ -258,21 +311,30 @@ namespace Space_Impact
             tick %= data.images.Count();
         }
 
-        public Visuals(Bitmap b)
+        public Visuals(Texture t, Rect sender)
         {
-
+            data = t;
+            parent = sender;
         }
     }
 
     public struct Data
     {
-        public const int player_width = 3;
-        public const int player_height = 3;
+        public const int player_width = 4;
+        public const int player_height = 5;
+        public const int player_spawn_x = 5;
 
         public static int map_width = 75;
         public static int spawnbox = 10;
         public static int map_height = 45;
-        public static int scale = 20;
+        public static int scale = 18;
+        public static Color bg_color = Color.FromArgb(133, 178, 149);
+
+        static public Texture player_healthy_texture = new Texture(-7, -3, @"Resources\player1.png");
+        static public Texture player_damaged_texture = new Texture(-7, -3, @"Resources\player1.png", @"Resources\player2.png");
 
     }
+
+    
+    
 }

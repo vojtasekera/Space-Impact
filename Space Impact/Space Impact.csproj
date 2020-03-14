@@ -62,11 +62,13 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Compile>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -81,8 +83,44 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
-    <None Include="Resources\80106997_3206394656043703_5791216572009807872_n.jpg" />
+    <Content Include="Resources\basket1.png" />
+    <Content Include="Resources\basket2.png" />
+    <Content Include="Resources\bean.png" />
+    <Content Include="Resources\bossa1.png" />
+    <Content Include="Resources\bossa2.png" />
+    <Content Include="Resources\bossb1.png" />
+    <Content Include="Resources\bossb2.png" />
+    <Content Include="Resources\dog.png" />
+    <Content Include="Resources\duck.png" />
+    <Content Include="Resources\eater.png" />
+    <Content Include="Resources\eater2.png" />
+    <Content Include="Resources\fish1.png" />
+    <Content Include="Resources\fish2.png" />
+    <Content Include="Resources\heart.png" />
+    <Content Include="Resources\jelly1.png" />
+    <Content Include="Resources\jelly2.png" />
+    <Content Include="Resources\mine.png" />
+    <Content Include="Resources\num0.png" />
+    <Content Include="Resources\num1.png" />
+    <Content Include="Resources\num2.png" />
+    <Content Include="Resources\num3.png" />
+    <Content Include="Resources\num4.png" />
+    <Content Include="Resources\num5.png" />
+    <Content Include="Resources\num6.png" />
+    <Content Include="Resources\num7.png" />
+    <Content Include="Resources\num8.png" />
+    <Content Include="Resources\num9.png" />
+    <Content Include="Resources\player1.png" />
+    <Content Include="Resources\player2.png" />
+    <Content Include="Resources\powerup1.png" />
+    <Content Include="Resources\powerup2.png" />
+    <Content Include="Resources\projectile.png" />
+    <Content Include="Resources\ship1.png" />
+    <Content Include="Resources\ship2.png" />
+    <Content Include="Resources\tadpole.png" />
+    <Content Include="Resources\tadpole2.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

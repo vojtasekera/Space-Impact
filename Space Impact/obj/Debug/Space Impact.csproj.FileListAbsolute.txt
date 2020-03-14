@@ -16,3 +16,5 @@ C:\Users\vojta\Documents\GitRep\Space Impact\Space Impact\obj\Debug\Space_Impact
 C:\Users\vojta\Documents\GitRep\Space Impact\Space Impact\obj\Debug\Space Impact.csproj.GenerateResource.cache
 C:\Users\vojta\Documents\GitRep\Space Impact\Space Impact\obj\Debug\Space Impact.exe
 C:\Users\vojta\Documents\GitRep\Space Impact\Space Impact\obj\Debug\Space Impact.pdb
+C:\Users\vojta\Documents\GitRep\Space Impact\Space Impact\bin\Debug\Properties\Resources.resx
+C:\Users\vojta\Documents\GitRep\Space Impact\Space Impact\bin\Debug\Properties\Resources.Designer.cs
