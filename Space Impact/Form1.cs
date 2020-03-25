@@ -17,10 +17,10 @@ namespace Space_Impact
         {
             InitializeComponent();
             FormBorderStyle = FormBorderStyle.FixedSingle;
-            pictureBox1.Width = Data.scale * Data.map_width;
-            pictureBox1.Height = Data.scale * Data.map_height;
-            this.Width = Data.scale * Data.map_width; 
-            this.Height = Data.scale * Data.map_height; 
+            pictureBox1.Width = GameData.scale * GameData.map_width;
+            pictureBox1.Height = GameData.scale * GameData.map_height;
+            this.Width = GameData.scale * GameData.map_width; 
+            this.Height = GameData.scale * GameData.map_height + this.Height - this.ClientSize.Height; 
         }
 
         Map map;
@@ -28,9 +28,10 @@ namespace Space_Impact
         Bitmap canvas, render;
 
         enum Direction {up, down, left, right};
-
+        enum Action {none, shoot, special};
 
         Direction dir = Direction.left;
+        Action action = Action.none;
         int step = 0;
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
@@ -73,9 +74,11 @@ namespace Space_Impact
                     break;
 
                 case Keys.L:
+                    action = Action.shoot;
                     break;
 
                 case Keys.K:
+                    action = Action.special;
                     break;
 
                 case Keys.Escape:
@@ -89,15 +92,20 @@ namespace Space_Impact
 
         }
 
+        private void Form1_KeyUp(object sender, KeyEventArgs e)
+        {
+            //e.KeyCode
+        }
+
         private void bStart_Click(object sender, EventArgs e)
         {
             bStart.Visible = false;
             tbLevel.Visible = false;
 
-            map = new Map(Data.map_width, Data.map_height, Data.spawnbox);
+            map = new Map(GameData.map_width, GameData.map_height, GameData.spawnbox);
             map.SetPlayer(3); //TODO
-            canvas = new Bitmap(Data.map_width, Data.map_height);
-            render = new Bitmap(Data.map_width * Data.scale, Data.scale * Data.map_height);
+            canvas = new Bitmap(GameData.map_width, GameData.map_height);
+            render = new Bitmap(GameData.map_width * GameData.scale, GameData.scale * GameData.map_height);
             g = Graphics.FromImage(canvas);
             h = Graphics.FromImage(render);
             h.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor ;
@@ -124,13 +132,23 @@ namespace Space_Impact
                         break;
                 }
                 step--;
-            } 
+            }
 
-
+            switch (action)
+            {
+                case Action.shoot:
+                    map.player.Shoot();
+                    break;
+                case Action.special:
+                    map.player.SpecialAttack();
+                    break;
+            }
+            action = Action.none;
             map.Update();
+            this.Text = map.player.x.ToString();
             //(new Thread(delegate(){
             map.DrawMap(g);
-            h.DrawImage(canvas, 0, 0, canvas.Width * Data.scale, canvas.Height * Data.scale);
+            h.DrawImage(canvas, 0, 0, canvas.Width * GameData.scale, canvas.Height * GameData.scale);
             // Bitmap bitmap = new Bitmap(Data.map_width, Data.map_height);
             //   g.DrawImage(pictureBox1.Image, 0, 0, Data.map_width, Data.map_height);
             pictureBox1.Image = render;
