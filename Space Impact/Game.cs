@@ -85,11 +85,6 @@ namespace Space_Impact
             else if (rec < 0) { Invincible = true; invincibility_timer = GameData.player_invincibility_time; }
         }
 
-        public void Draw(Graphics sender)
-        {
-            visuals.Draw(sender);
-        }
-
         public void Up()
         {
             if (top >= map.top) y--;
@@ -150,8 +145,7 @@ namespace Space_Impact
 
         public  Map(int w, int h, int s) : base(w,h)
         {
-            spawnbox = new Rect(w + s,h + 2*s);
-            spawnbox.y -= s;
+            spawnbox = new Rect(w + s,h);
         }
 
         public void SetPlayer(int h)
@@ -177,7 +171,7 @@ namespace Space_Impact
             {
                 member.Move();
 
-                if  (!member.CollidesWith(spawnbox)) member.Destroy();
+                
             }
 
 //            foreach (MortalObject enemy in list_of_moving)
@@ -216,7 +210,7 @@ namespace Space_Impact
         protected bool invincible;
         public bool friendly = false;
         public bool ignores_projectiles = false;
-
+        protected int despawn_timer = GameData.despawn_time;
 
 
         public void Destroy()
@@ -244,7 +238,16 @@ namespace Space_Impact
 
         public virtual void Move()
         {
+            if (movement != null)
             movement.Move();
+
+            //TODO: mozna nebude treba uzit spawnbox
+            if (!this.CollidesWith(map))
+            {
+                despawn_timer--;
+                if (despawn_timer <= 0) Destroy();
+            }
+            else despawn_timer = GameData.despawn_time;
         }
 
         public MovingObject(int _x, int _y, Map m)
@@ -256,13 +259,9 @@ namespace Space_Impact
             map.Add(this);
         }
     }
-
-
-    
     
     class NormalAttack : MovingObject
     {
-
         public override void CollisionWith(MovingObject coll)
         {
             if (friendly != coll.friendly && !coll.ignores_projectiles)
@@ -283,7 +282,6 @@ namespace Space_Impact
             else movement = new Movement.Linear(2, 1, 5, this);
 
         }
-
     }
 
     class SpecialAttack
@@ -297,11 +295,6 @@ namespace Space_Impact
 
         Phase phase = Phase.entry;
         int entry_time = GameData.boss_entry_time;
-
-        public override void Move()
-        {
-
-        }
 
         public Boss(int _x, int _y, Map m) : base(_x,_y,m) 
         {
@@ -443,6 +436,7 @@ namespace Space_Impact
 
         public static int map_width = 75;
         public static int spawnbox = 10;
+        public static int despawn_time = 30;
         public static int map_height = 45;
         public static int scale = 18;
         public static Color bg_color = Color.FromArgb(133, 178, 149);
@@ -455,7 +449,4 @@ namespace Space_Impact
 
         public const int boss_entry_time = 40;
     }
-
-    
-    
 }

@@ -42,16 +42,18 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.pictureBox1.Location = new System.Drawing.Point(0, 0);
+            this.pictureBox1.Margin = new System.Windows.Forms.Padding(2);
             this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(1472, 953);
+            this.pictureBox1.Size = new System.Drawing.Size(1104, 774);
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
             // 
             // bStart
             // 
-            this.bStart.Location = new System.Drawing.Point(547, 296);
+            this.bStart.Location = new System.Drawing.Point(410, 240);
+            this.bStart.Margin = new System.Windows.Forms.Padding(2);
             this.bStart.Name = "bStart";
-            this.bStart.Size = new System.Drawing.Size(255, 57);
+            this.bStart.Size = new System.Drawing.Size(191, 46);
             this.bStart.TabIndex = 1;
             this.bStart.Text = "Spustit hru";
             this.bStart.UseVisualStyleBackColor = true;
@@ -64,20 +66,22 @@
             // 
             // tbLevel
             // 
-            this.tbLevel.Location = new System.Drawing.Point(547, 253);
+            this.tbLevel.Location = new System.Drawing.Point(410, 206);
+            this.tbLevel.Margin = new System.Windows.Forms.Padding(2);
             this.tbLevel.Name = "tbLevel";
-            this.tbLevel.Size = new System.Drawing.Size(213, 22);
+            this.tbLevel.Size = new System.Drawing.Size(161, 20);
             this.tbLevel.TabIndex = 3;
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1532, 953);
+            this.ClientSize = new System.Drawing.Size(1149, 774);
             this.Controls.Add(this.tbLevel);
             this.Controls.Add(this.bStart);
             this.Controls.Add(this.pictureBox1);
             this.KeyPreview = true;
+            this.Margin = new System.Windows.Forms.Padding(2);
             this.MaximizeBox = false;
             this.Name = "Form1";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
