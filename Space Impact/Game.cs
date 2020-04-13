@@ -4,7 +4,6 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace Space_Impact
 {
@@ -17,9 +16,9 @@ namespace Space_Impact
         public int width, height;
 
         public int left    {get => x;}
-        public int right   {get => x + width;}
+        public int right   {get => x + width - 1;}
         public int top     {get => y;}
-        public int bottom  {get => y + height;}
+        public int bottom  {get => y + height - 1;}
 
         public bool CollidesWith(Rect rect)
         {
@@ -61,6 +60,17 @@ namespace Space_Impact
     {
         int invincibility_timer = 0;
         int special_attacks;
+        int attack_cool;
+        static int attack_cooldown = Constants.player_attack_cooldown;
+
+        public override void Shoot()
+        {
+            if (attack_cool <= 0)
+            {
+                attack_cool = attack_cooldown;
+                base.Shoot();
+            }
+        }
 
         public bool Invincible
         {
@@ -80,9 +90,10 @@ namespace Space_Impact
         public override void Damage(int rec)
         {
             if (invincible) return;
-            health += rec;
+            health -= rec;
+            Invincible = true; 
+            invincibility_timer = Constants.player_invincibility_time;
             if (health <= 0) map.state = State.loss;
-            else if (rec < 0) { Invincible = true; invincibility_timer = GameData.player_invincibility_time; }
         }
 
         public void Up()
@@ -104,53 +115,53 @@ namespace Space_Impact
             if (left > map.left) x--;
         }
 
-        public void Shoot()
-        {
-            new NormalAttack(x + GameData.player_attack_xoff, y + GameData.player_attack_yoff, map, true);
-        }
-
         public void SpecialAttack()
         {
 
         }
 
-        public void Update()
+        public override void Update()
         {
             if (invincible)
             {
                 invincibility_timer--;
                 if (invincibility_timer <= 0) Invincible = false;
             }
+
+            if (attack_cool > 0) attack_cool--;
         }
 
         public Player(int _x, int _y, int _health, Map m) : base(_x, _y, m)
         {
+            key = "player";
             health = _health;
-            height = GameData.player_height;
-            width = GameData.player_width;
-            visuals = new Visuals(GameData.player_texture, this);
-            movement = new Movement.Player();
+            damage = 0;
+            friendly = true;
+            height = Constants.player_height;
+            width = Constants.player_width;
+            visuals = new Visuals(Texture.FromKey(key));
+            visuals.Stop();
+            shoot_xoff = Constants.player_attack_xoff;
+            shoot_yoff = Constants.player_attack_yoff;
         }
     }
 
     class Map : Rect
     {
-        Rect spawnbox;
-
         public State state = State.spawn;
 
         public Player player;
 
         List<MovingObject> list_of_moving = new List<MovingObject>();
 
-        public  Map(int w, int h, int s) : base(w,h)
+        public  Map(int w, int h, int p) : base(w,h)
         {
-            spawnbox = new Rect(w + s,h);
+            player = new Player(Constants.player_spawn_x, height / 2, p, this);
         }
 
-        public void SetPlayer(int h)
+        public Map()
         {
-            player = new Player( GameData.player_spawn_x, height/2 , h, this);
+
         }
 
         public void Add(MovingObject member)
@@ -163,55 +174,87 @@ namespace Space_Impact
             list_of_moving.Remove(member);
         }
 
-        public void Update()
+        public void Spawn()
         {
-            player.Update();
+            //TESTING
+            Random random = new Random();
+            new Enemy.BossA(70, 20, this);
+            //new Enemy.BossA(random.Next(0,70), random.Next(0,45) , this);
+            ///new Enemy.BossB(random.Next(0, 70), random.Next(0, 45), this);
+        }
 
+        void MoveAll()
+        {
             foreach (MovingObject member in list_of_moving.ToList())
             {
-                member.Move();
-
-                
+                member.Update();
             }
+        }
 
-//            foreach (MortalObject enemy in list_of_moving)
+        void Update()
             {
-                foreach (MovingObject projectile in list_of_moving)
+            var list = list_of_moving.ToList();
+           
+            foreach (MovingObject foo in list)
+            {
+                foreach (MovingObject bar in list)
                 {
-                        //TODO: collision events
+                    if (foo.CollidesWith(bar) && foo!=bar)
+                    {
+                        foo.CollisionWith(bar);
+                        bar.CollisionWith(foo);
+                    }
                 }
             }
         }
 
-        Brush brush = new SolidBrush(GameData.bg_color);
-        public void DrawMap(Graphics g)
+        Brush brush = new SolidBrush(Constants.bg_color);
+
+
+        void DrawMap(Graphics g)
         {
-            Brush fg_brush = Brushes.Red;
             g.FillRectangle(brush, g.ClipBounds);
 
             foreach (MovingObject member in list_of_moving)
             {
-                g.FillRectangle(fg_brush, member.x, member.y, 1, 1);
+                member.Draw(g);
+                //TESTING
+                //g.DrawRectangle(Pens.Red, member.x, member.y, member.width - 1, member.height- 1);
             }
-
-            player.Draw(g);
         }
+
+        public void MapOut(Graphics g)
+        {
+            MoveAll();
+            DrawMap(g);
+            Update();
+        }
+
+        public int UnitCount() => list_of_moving.Count;
     }
 
-
-    class MovingObject : Rect
+    abstract class MovingObject : Rect
     {
+        static Dictionary<string, MovingObject> default_values;
+
+        protected string key;
         public Map map;
-        protected Movement movement = new Movement.Player();
+        protected Behaviour behaviour;
         protected Visuals visuals;
 
-        protected int health;
-        protected int damage;
-        protected bool invincible;
+        protected int health = 1;
+        protected int damage = 1;
+        protected bool invincible = false;
         public bool friendly = false;
         public bool ignores_projectiles = false;
-        protected int despawn_timer = GameData.despawn_time;
+        protected int despawn_timer = Constants.despawn_time;
 
+        protected int shoot_xoff, shoot_yoff;
+
+        public virtual void Shoot()
+        {
+            new NormalAttack(x + shoot_xoff, y + shoot_yoff, map, friendly);
+        }
 
         public void Destroy()
         {
@@ -227,27 +270,26 @@ namespace Space_Impact
 
         public virtual void CollisionWith(MovingObject coll)
         {
-
+            if (friendly != coll.friendly) coll.Damage(damage);
         }
 
         public void Draw(Graphics sender)
         {
             if (visuals != null) 
-            visuals.Draw(sender);
+            visuals.Draw(this, sender);
         }
 
-        public virtual void Move()
+        public virtual void Update()
         {
-            if (movement != null)
-            movement.Move();
+            if (behaviour != null)
+            behaviour.Update(this);
 
-            //TODO: mozna nebude treba uzit spawnbox
             if (!this.CollidesWith(map))
             {
                 despawn_timer--;
                 if (despawn_timer <= 0) Destroy();
             }
-            else despawn_timer = GameData.despawn_time;
+            else despawn_timer = Constants.despawn_time;
         }
 
         public MovingObject(int _x, int _y, Map m)
@@ -257,6 +299,139 @@ namespace Space_Impact
             y = _y;
             map = m;
             map.Add(this);
+        }
+
+    }
+
+    
+    static class Enemy
+    {
+
+        public class Jelly : MovingObject
+        {
+            static Texture texture = new Texture(-1, 0, @"Resources\jelly1.png", @"Resources\jelly2.png");
+            public Jelly(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 1;
+                width = 3;
+                height = 5;
+                behaviour = new Behaviour.OnlyMoving(new Movement.Linear(1));
+                visuals = new Visuals(texture);
+            }
+        }
+
+        public class Basket : MovingObject
+        {
+            static Texture texture = new Texture(-2, -3, @"Resources\basket1.png", @"Resources\basket2.png");
+            static int[] x_movement = new int[]
+                    { 2, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1, 0, -1, -1, -1, -2, -2, -1, -1, -1, 0, -1, -1, 0, -1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 2 };
+            static int[] y_movement = new int[] { 1 };
+            public Basket(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 1;
+                width = 3;
+                height = 3;
+                behaviour = new Behaviour.OnlyMoving(new Movement.General(x_movement, y_movement));
+                visuals = new Visuals(texture);
+            }
+        }
+
+        public class Bean : MovingObject
+        {
+            static Texture texture = new Texture(-2, -2, @"Resources\bean.png");
+            public Bean(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 1;
+                height = 3;
+                width = 6;
+                visuals = new Visuals(texture);
+            }
+        }
+
+        public class BossA : MovingObject
+        {
+            static Texture texture = new Texture(-1, -4, @"Resources\bossa1.png", @"Resources\bossa2.png");
+            public BossA(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 30;
+                height = 15;
+                width = 15;
+                visuals = new Visuals(texture);
+                behaviour = new Behaviour.BossA(Movement.General.OnlyX(1,0), new Movement.Linear(0,1,50), 200, 
+                    Movement.General.OnlyX(1,0,1,1,2,1,2,2,3,4,3,3,2,2,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0));
+            }
+        }
+
+        public class BossB : MovingObject
+        {
+            static Texture texture = new Texture(-7, -2, @"Resources\bossb1.png", @"Resources\bossb2.png");
+            public BossB(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 50;
+                height = 20;
+                width = 12;
+                visuals = new Visuals(texture);
+            }
+        }
+
+        class Dog : MovingObject
+        {
+            static Texture texture = new Texture(0, 0, @"Resources\dog.png");
+            public Dog(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 6;
+                height = 7;
+                width = 7;
+                visuals = new Visuals(texture);
+            }
+        }
+
+        class Eater: MovingObject
+        {
+            static Texture texture = new Texture(-2, -2, @"Resources\eater1.png", @"Resources\eater2.png");
+            public Eater(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 3;
+                height = 11;
+                width = 6;
+                visuals = new Visuals(texture);
+            }
+        }
+
+        class Fish : MovingObject
+        {
+            static Texture texture = new Texture(-2, -2, @"Resources\fish1.png", @"Resources\fish2.png");
+            public Fish(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 3;
+                height = 11;
+                width = 6;
+                visuals = new Visuals(texture);
+            }
+        }
+
+        class Ship : MovingObject
+        {
+            static Texture texture = new Texture(-2, -2, @"Resources\ship1.png", @"Resources\ship2.png");
+            public Ship(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 5;
+                height = 3;
+                width = 9;
+                visuals = new Visuals(texture);
+            }
+        }
+
+        class Tadpole : MovingObject
+        {
+            static Texture texture = new Texture(0, 0, @"Resources\tadpole1.png", @"Resources\tadpole2.png");
+            public Tadpole(int x, int y, Map m) : base(x, y, m)
+            {
+                health = 1;
+                height = 3;
+                width = 6;
+                visuals = new Visuals(texture);
+            }
         }
     }
     
@@ -273,13 +448,14 @@ namespace Space_Impact
 
         public NormalAttack(int _x, int _y, Map m, bool f):base(_x, _y, m)
         {
-            damage = GameData.normal_attack_dmg;
-            width = GameData.projectile_width;
-            height = GameData.projectile_height;
+            key = "projectile";
+            damage = Constants.normal_attack_dmg;
+            width = Constants.projectile_width;
+            height = Constants.projectile_height;
             friendly = f;
-            this.visuals = new Visuals(GameData.projectile_texture, this);
-            if (friendly) movement = new Movement.Linear(-2, 1, 5, this);
-            else movement = new Movement.Linear(2, 1, 5, this);
+            this.visuals = new Visuals(Texture.FromKey(key));
+            if (friendly) behaviour = new Behaviour.OnlyMoving(new Movement.Linear(-2));
+           else behaviour = behaviour = new Behaviour.OnlyMoving(new Movement.Linear(2));
 
         }
     }
@@ -291,99 +467,285 @@ namespace Space_Impact
 
     class Boss : MovingObject
     {
-        enum Phase { entry, stable, charge }
-
-        Phase phase = Phase.entry;
-        int entry_time = GameData.boss_entry_time;
-
         public Boss(int _x, int _y, Map m) : base(_x,_y,m) 
         {
-            movement = new Movement.Linear(1, 2, this);
+           //TODO: movement = new Movement.Linear(1, 2, this);
         }
     }
     
 
     abstract class Movement
     {
-        protected MovingObject parent;
-
-        public virtual void Move()
-        {
-        }
-
-        public class Player : Movement
-        {
-
-        }
+        public bool ended;
+        public virtual void Move(MovingObject parent) { }
 
         public class Linear : Movement
         {
-            int delay = 0;
-            int modulo = 1, hor_speed, ver_speed;
+            int hor_speed, ver_speed;
             int reverse, temp = 0;
             bool wiggle = false;
             bool up = true;
 
-            public override void Move()
+            public override void Move(MovingObject parent)
             {
-                if (delay == 0)
+
+                if (wiggle)
                 {
-                    if (wiggle)
-                    {
-                        if (up) parent.y -= ver_speed;
-                        else parent.y += ver_speed;
-                    }
-                    parent.x -= hor_speed;
-                    temp ++ ;
+                    if (up) parent.y -= ver_speed;
+                    else parent.y += ver_speed;
                 }
+                parent.x -= hor_speed;
+                temp++;
 
-                delay++;
-                delay %= modulo;
-
-                if (temp >= reverse|| parent.OnEdgeOf(parent.map))
+                if (temp >= reverse || parent.OnEdgeOf(parent.map))
                 {
                     temp = 0;
                     up = !up;
                 }
             }
-
-            public Linear(int s, int m, MovingObject p)
+            public Linear(int s)
             {
-                parent = p;
                 hor_speed = s;
-                modulo = m;
             }
-
-            public Linear(int s, int m, int rev, MovingObject p)
+            public Linear(int s, int rev)
             {
-                parent = p;
                 hor_speed = s;
                 ver_speed = s;
-                modulo = m;
                 reverse = rev;
                 wiggle = true;
             }
-
-            public Linear(int hs, int ws, int m, int rev, MovingObject p)
+            public Linear(int hs, int ws, int rev)
             {
-                parent = p;
                 hor_speed = hs;
                 ver_speed = ws;
-                modulo = m;
                 reverse = rev;
                 wiggle = true;
             }
         }
 
-        class Boss : Movement
+        public class General : Movement
         {
-            
+            int x_pos, y_pos;
+            int[] x;
+            int[] y;
+            int i = 1;
 
+            public General(int[] x, int[] y)
+            {
+                this.x = x;
+                this.y = y;
+            }
+
+            public General()
+            {
+            }
+
+            public override void Move(MovingObject parent)
+            {
+                ended = false;
+
+                if (x != null) 
+                {
+                    parent.x -= i*x[x_pos];
+                    x_pos++;
+                    x_pos %= x.Length;
+
+                    // (x_pos == 0 && (y != null => x.Length >= y.Length))
+                    // tuto implikaci zapíšeme pomocí negace
+                    if (x_pos == 0 && !(y != null && !(x.Length >= y.Length))) ended = true;
+                }
+                if (y != null)
+                {
+                    parent.y -= i*y[y_pos];
+                    y_pos++;
+                    y_pos %= y.Length;
+
+                    if (y_pos == 0 && !(x != null && !(y.Length >= x.Length))) ended = true;
+                }
+
+            }
+
+            public void Reverse()
+            {
+                if (x != null) 
+                {
+                   // x_pos = x.Length - x_pos - 1 ;
+                    Array.Reverse(x); 
+                }
+                if (y != null)
+                {
+                    //y_pos = y.Length - y_pos - 1;
+                    Array.Reverse(y); 
+                }
+
+                i = -i;
+            }
+
+            public static General OnlyX(params int[] steps)
+            {
+                General a = new General();
+                a.x = steps;
+                return a;
+            }
+            public static General OnlyY(params int[] steps)
+            {
+                General a = new General();
+                a.y = steps;
+                return a;
+            }
+        }
+
+
+
+    }
+
+
+    abstract class Behaviour
+        //tato třída spravuje chování nepřátel, projektilů a dalších jednotek - tedy pohyb a střelbu
+    {
+
+        public virtual void Update(MovingObject parent) { }
+
+        public class OnlyMoving : Behaviour
+        {
+            protected Movement movement;
+
+            public override void Update(MovingObject parent)
+            {
+                movement.Move(parent);
+            }
+
+            public OnlyMoving(Movement mov)
+            {
+                movement = mov;
+            }
+        }
+      
+        public class Shooting : OnlyMoving
+        {
+
+            int shoot_interval, si_temp;
+
+            public Shooting(Movement mov, int shoot_interval) : base(mov)
+            {
+                this.shoot_interval = shoot_interval;
+            }
+
+            public override void Update(MovingObject parent)
+            {
+                if (movement != null)
+                movement.Move(parent);
+
+                si_temp--;
+                if (si_temp <= 0)
+                {
+                    si_temp = shoot_interval;
+                    parent.Shoot();
+                }
+            }
+        }
+
+        public class BossB : Behaviour
+        {
+            Behaviour phase;
+            Behaviour.OnlyMoving entry;
+            Behaviour.Shooting stable;
+
+            public override void Update(MovingObject parent)
+            {
+                if (phase == entry && parent.map.right > parent.right) phase = stable;
+                phase.Update(parent);
+            }
+
+            public BossB(Movement mov, Shooting sh)
+            {
+                entry = new OnlyMoving(mov);
+                stable = sh;
+                phase = entry;
+            }
+        }
+
+        public class BossA : Behaviour
+        {
+            Movement entry, stable;
+            Movement.General charge;
+            enum Phase { entry, stable, charge, pause, retreat }
+            Phase phase = Phase.entry;
+
+            int stable_time; //= GameData.bossB_stable_time;
+            int pause_time = 50;
+            int timer;
+            public override void Update(MovingObject parent)
+            {
+                switch (phase)
+                {
+                    case Phase.entry:
+                        entry.Move(parent);
+                        if (parent.map.right > parent.right)
+                        {
+                            
+                            phase = Phase.stable;
+                        }
+                        break;
+                    case Phase.stable:
+                        stable.Move(parent);
+                        timer++;
+                        if (timer >= stable_time)
+                        {
+                            phase = Phase.charge;
+                            
+                            timer = 0;
+                        }
+
+
+                        break;
+                    case Phase.charge:
+                        charge.Move(parent);
+                        if (charge.ended == true)
+                        {
+                            phase = Phase.pause;
+                            charge.Reverse();
+                        }
+                        break;
+                    case Phase.pause:
+
+                        timer++;
+                        if (timer >= pause_time)
+                        {
+                            phase = Phase.retreat;
+                        }
+
+                        break;
+                    case Phase.retreat:
+
+                        charge.Move(parent);
+                        if (charge.ended == true)
+                        {
+                            phase = Phase.stable;
+                            charge.Reverse();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+
+            public BossA(Movement entry, Movement stable, int stable_time, Movement.General charge)
+            {
+                this.entry = entry;
+                this.stable = stable;
+                this.charge = charge;
+                this.stable_time = stable_time;
+            }
+
+          
         }
     }
 
     public class Texture
     {
+        static Dictionary<string, Texture> Data;
         public int offx, offy;
         public List<Bitmap> images;
 
@@ -397,56 +759,96 @@ namespace Space_Impact
                 images.Add((Bitmap)Bitmap.FromFile(name));
             }
         }
+
+        static public Texture FromKey(string key)
+        {
+            return Data[key];
+        }
+
+        public static void Load(string file)
+        {
+            List<string> fields;
+            string name;
+            int xoff, yoff;
+
+
+            string[] lines = System.IO.File.ReadAllLines(file);
+            foreach(string line in lines)
+            {
+
+                fields = line.Split(';').ToList();
+                name = fields[0];
+                xoff = int.Parse(fields[1]);
+                yoff = int.Parse(fields[2]);
+                fields.RemoveRange(0, 3);
+                Data.Add(fields.First(), new Texture(xoff, yoff, fields.ToArray()));
+            }
+        }
     }
 
     class Visuals
     {
-        MovingObject parent;
-        int tick = 0;
-
+        bool loop = true;
+        int delay = Constants.graphics_flash_interval, tick;
+        int image;
         Texture data;
 
-        public void Draw(Graphics sender)
+        public void Draw(MovingObject parent, Graphics sender)
         {
             if (data != null)
-            sender.DrawImage(data.images[tick], parent.x + data.offx, parent.y + data.offy);
+            sender.DrawImage(data.images[image], parent.x + data.offx, parent.y + data.offy);
+            if (loop)
+            {
+                tick++;
+                tick %= delay;
+
+                if (tick == 0) Next();
+            }
         }
 
         public void Next()
         {
-            tick++;
-            tick %= data.images.Count();
+            image++;
+            image %= data.images.Count();
         }
 
-        public Visuals(Texture t, MovingObject sender)
+        public void Stop()
+        {
+            loop = false;
+        }
+
+        public Visuals(Texture t)
         {
             data = t;
-            parent = sender;
         }
     }
 
-    public struct GameData
+    public static class Constants
     {
-        public const int player_width = 4;
+        public const int player_width = 6;
         public const int player_height = 5;
         public const int player_spawn_x = 5;
         public const int player_attack_xoff = 6;
         public const int player_attack_yoff = 2;
-        public const int player_invincibility_time = 300;
+        public const int player_invincibility_time = 50;
+        public const int player_attack_cooldown = 10;
 
-        public static int map_width = 75;
-        public static int spawnbox = 10;
-        public static int despawn_time = 30;
-        public static int map_height = 45;
-        public static int scale = 18;
+        public const int map_width = 75;
+      
+        public const int despawn_time = 10;
+        public const int map_height = 45;
+        public const int scale = 18;
         public static Color bg_color = Color.FromArgb(133, 178, 149);
 
-        static public Texture player_texture = new Texture(-7, -3, @"Resources\player1.png", @"Resources\player2.png");
-        static public Texture projectile_texture = new Texture(0, 0, @"Resources\projectile.png");
+        public const int graphics_flash_interval = 10;
+
         public static int projectile_width = 3;
         public static int projectile_height = 1;
         public static int normal_attack_dmg = 1;
 
-        public const int boss_entry_time = 40;
+        public const int bossB_stable_time = 40;
+        public static int[] basket_ymovement = new int[] 
+        { 2, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1, 0, -1, -1, -1, -2, -2, -1, -1, -1, 0, -1, -1, 0, -1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 2 };
+        public static int[] basket_xmovement = new int[] {1};
     }
 }

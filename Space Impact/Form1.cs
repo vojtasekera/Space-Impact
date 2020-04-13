@@ -17,17 +17,17 @@ namespace Space_Impact
         {
             InitializeComponent();
             FormBorderStyle = FormBorderStyle.FixedSingle;
-            pictureBox1.Width = GameData.scale * GameData.map_width;
-            pictureBox1.Height = GameData.scale * GameData.map_height;
-            this.Width = GameData.scale * GameData.map_width; 
-            this.Height = GameData.scale * GameData.map_height + this.Height - this.ClientSize.Height;
+            pictureBox1.Width = Constants.scale * Constants.map_width;
+            pictureBox1.Height = Constants.scale * Constants.map_height;
+            this.Width = Constants.scale * Constants.map_width; 
+            this.Height = Constants.scale * Constants.map_height + this.Height - this.ClientSize.Height;
 
-            PlayerInput.Pause = PauseGame;
+            //PlayerInput.Pause = map.Spawn; //PauseGame;
             PlayerInput.ReturnToMenu = EndGame;
 
            
-            canvas = new Bitmap(GameData.map_width, GameData.map_height);
-            render = new Bitmap(GameData.map_width * GameData.scale, GameData.scale * GameData.map_height);
+            canvas = new Bitmap(Constants.map_width, Constants.map_height);
+            render = new Bitmap(Constants.map_width * Constants.scale, Constants.scale * Constants.map_height);
             g = Graphics.FromImage(canvas);
             h = Graphics.FromImage(render);
             h.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor ;
@@ -200,10 +200,12 @@ namespace Space_Impact
 
 
             //TODO: load level from file
-            map = new Map(GameData.map_width, GameData.map_height, GameData.spawnbox);
-            map.SetPlayer(3); //TODO
+            map = new Map(Constants.map_width, Constants.map_height, 3);
             pictureBox1.Image = null;
             pictureBox1.Visible = true;
+
+            //TESTING
+            PlayerInput.Pause = map.Spawn;
 
             timer.Start();
         }
@@ -229,10 +231,10 @@ namespace Space_Impact
             if (PlayerInput.Attack) map.player.Shoot();
             if (PlayerInput.SpecialAttack) map.player.SpecialAttack();
 
-            map.Update();
-            map.DrawMap(g);
+            map.MapOut(g);
+            this.Text = map.UnitCount().ToString();
 
-            h.DrawImage(canvas, 0, 0, canvas.Width * GameData.scale, canvas.Height * GameData.scale);
+            h.DrawImage(canvas, 0, 0, canvas.Width * Constants.scale, canvas.Height * Constants.scale);
             pictureBox1.Image = render;
             pictureBox1.Refresh();
         }
