@@ -89,7 +89,7 @@ namespace Space_Impact
 
         public override void Damage(int rec)
         {
-            if (invincible) return;
+            if (Invincible) return;
             health -= rec;
             Invincible = true; 
             invincibility_timer = Constants.player_invincibility_time;
@@ -178,7 +178,7 @@ namespace Space_Impact
         {
             //TESTING
             Random random = new Random();
-            new Enemy.BossA(70, 20, this);
+            new NPC.BossA(70, 20, this);
             //new Enemy.BossA(random.Next(0,70), random.Next(0,45) , this);
             ///new Enemy.BossB(random.Next(0, 70), random.Next(0, 45), this);
         }
@@ -233,9 +233,9 @@ namespace Space_Impact
         public int UnitCount() => list_of_moving.Count;
     }
 
-    abstract class MovingObject : Rect
+    class MovingObject : Rect
     {
-        static Dictionary<string, MovingObject> default_values;
+       // static Dictionary<string, MovingObject> default_values;
 
         protected string key;
         public Map map;
@@ -304,59 +304,59 @@ namespace Space_Impact
     }
 
     
-    static class Enemy
+    static class NPC
     {
 
         public class Jelly : MovingObject
         {
-            static Texture texture = new Texture(-1, 0, @"Resources\jelly1.png", @"Resources\jelly2.png");
             public Jelly(int x, int y, Map m) : base(x, y, m)
             {
+                key = "jelly";
                 health = 1;
                 width = 3;
                 height = 5;
                 behaviour = new Behaviour.OnlyMoving(new Movement.Linear(1));
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         public class Basket : MovingObject
         {
-            static Texture texture = new Texture(-2, -3, @"Resources\basket1.png", @"Resources\basket2.png");
             static int[] x_movement = new int[]
                     { 2, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1, 0, -1, -1, -1, -2, -2, -1, -1, -1, 0, -1, -1, 0, -1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 2 };
             static int[] y_movement = new int[] { 1 };
             public Basket(int x, int y, Map m) : base(x, y, m)
             {
+                key = "basket";
                 health = 1;
                 width = 3;
                 height = 3;
                 behaviour = new Behaviour.OnlyMoving(new Movement.General(x_movement, y_movement));
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         public class Bean : MovingObject
         {
-            static Texture texture = new Texture(-2, -2, @"Resources\bean.png");
             public Bean(int x, int y, Map m) : base(x, y, m)
             {
+                key = "bean";
                 health = 1;
                 height = 3;
                 width = 6;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         public class BossA : MovingObject
         {
-            static Texture texture = new Texture(-1, -4, @"Resources\bossa1.png", @"Resources\bossa2.png");
             public BossA(int x, int y, Map m) : base(x, y, m)
             {
+                key = "bossa";
                 health = 30;
                 height = 15;
                 width = 15;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
                 behaviour = new Behaviour.BossA(Movement.General.OnlyX(1,0), new Movement.Linear(0,1,50), 200, 
                     Movement.General.OnlyX(1,0,1,1,2,1,2,2,3,4,3,3,2,2,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0));
             }
@@ -364,73 +364,73 @@ namespace Space_Impact
 
         public class BossB : MovingObject
         {
-            static Texture texture = new Texture(-7, -2, @"Resources\bossb1.png", @"Resources\bossb2.png");
             public BossB(int x, int y, Map m) : base(x, y, m)
             {
+                key = "bossb";
                 health = 50;
                 height = 20;
                 width = 12;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         class Dog : MovingObject
         {
-            static Texture texture = new Texture(0, 0, @"Resources\dog.png");
             public Dog(int x, int y, Map m) : base(x, y, m)
             {
+                key = "dog";
                 health = 6;
                 height = 7;
                 width = 7;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         class Eater: MovingObject
         {
-            static Texture texture = new Texture(-2, -2, @"Resources\eater1.png", @"Resources\eater2.png");
             public Eater(int x, int y, Map m) : base(x, y, m)
             {
+                key = "eater";
                 health = 3;
                 height = 11;
                 width = 6;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         class Fish : MovingObject
         {
-            static Texture texture = new Texture(-2, -2, @"Resources\fish1.png", @"Resources\fish2.png");
             public Fish(int x, int y, Map m) : base(x, y, m)
             {
+                key = "fish";
                 health = 3;
                 height = 11;
                 width = 6;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         class Ship : MovingObject
         {
-            static Texture texture = new Texture(-2, -2, @"Resources\ship1.png", @"Resources\ship2.png");
             public Ship(int x, int y, Map m) : base(x, y, m)
             {
+                key = "ship";
                 health = 5;
                 height = 3;
                 width = 9;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
 
         class Tadpole : MovingObject
         {
-            static Texture texture = new Texture(0, 0, @"Resources\tadpole1.png", @"Resources\tadpole2.png");
             public Tadpole(int x, int y, Map m) : base(x, y, m)
             {
+                key = "tadpole";
                 health = 1;
                 height = 3;
                 width = 6;
-                visuals = new Visuals(texture);
+                visuals = new Visuals(Texture.FromKey(key));
             }
         }
     }
@@ -603,6 +603,14 @@ namespace Space_Impact
     abstract class Behaviour
         //tato třída spravuje chování nepřátel, projektilů a dalších jednotek - tedy pohyb a střelbu
     {
+        static Dictionary<string, Behaviour> Data;
+
+        public static Behaviour FromKey(string key)
+        {
+            Behaviour test;
+            Data.TryGetValue(key, out test);
+            return test;
+        }
 
         public virtual void Update(MovingObject parent) { }
 
