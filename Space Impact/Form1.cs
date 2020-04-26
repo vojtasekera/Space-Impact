@@ -17,31 +17,50 @@ namespace Space_Impact
         {
             InitializeComponent();
             FormBorderStyle = FormBorderStyle.FixedSingle;
-            pictureBox1.Width = Constants.scale * Constants.map_width;
-            pictureBox1.Height = Constants.scale * Constants.map_height;
-            this.Width = Constants.scale * Constants.map_width; 
-            this.Height = Constants.scale * Constants.map_height + this.Height - this.ClientSize.Height;
+            pbHUD.Width = Constants.scale * Constants.hud_height;
+            pbGame.Height = Constants.scale * Constants.map_width;
+            pbGame.Top = pbHUD.Top + pbHUD.Height;
+            pbGame.Width = Constants.scale * Constants.map_width;
+            pbGame.Height = Constants.scale * Constants.map_height;
+
+            pbHUD.BackColor = Color.Red;
+           // pbGame.BackColor = Color.Blue;
+
+            this.Width = pbHUD.Width + 200;
+            this.Height = pbHUD.Height + pbGame.Height;
+            this.BackColor = Constants.bg_color;
 
             //PlayerInput.Pause = map.Spawn; //PauseGame;
             PlayerInput.ReturnToMenu = EndGame;
 
            
-            canvas = new Bitmap(Constants.map_width, Constants.map_height);
-            render = new Bitmap(Constants.map_width * Constants.scale, Constants.scale * Constants.map_height);
-            g = Graphics.FromImage(canvas);
-            h = Graphics.FromImage(render);
-            h.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor ;
+            game_screen = new Bitmap(Constants.map_width, Constants.map_height);
+            gs_out = new Bitmap(Constants.map_width * Constants.scale, Constants.scale * Constants.map_height);
+
+            player_stats = new Bitmap(Constants.map_width, Constants.hud_height);
+            ps_out = new Bitmap(Constants.map_width * Constants.scale, Constants.scale * Constants.hud_height);
+
+            gs = Graphics.FromImage(game_screen);
+            gs2 = Graphics.FromImage(gs_out);
+            gs2.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor ;
+
+            pbGame.Size = gs2.ClipBounds.Size.ToSize();
         }
 
         Map map;
-        Graphics g, h;
-        Bitmap canvas, render;
+        Graphics gs, gs2, ps, ps2;
+        Bitmap game_screen, gs_out, player_stats, ps_out;
         enum GameState { active, paused, menu };
         GameState win_state = GameState.menu;
         
 
+        /*
+         * Třída poskutující metody pro události KeyDown a KeyUp
+         * pamatuje si poslední stisknuté klásvesy z W, A, S, D, L, K, P, ESCAPE
+         */
         static class PlayerInput
         {
+
             public enum Direction { none, up, down, left, right };
             static Direction last_pressed;
             static bool[] keys_down = new bool[Enum.GetNames(typeof(Direction)).Length];
@@ -149,7 +168,7 @@ namespace Space_Impact
                 return a;
             }
         }
-        
+
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
             PlayerInput.IssueKeys(true, e);
@@ -178,7 +197,6 @@ namespace Space_Impact
                 default:
                     break;
             }
-         
         }
 
 
@@ -187,7 +205,7 @@ namespace Space_Impact
             win_state = GameState.menu;
             bStart.Visible = true;
             tbLevel.Visible = true;
-            pictureBox1.Visible = false;
+            pbGame.Visible = false;
             tbLevel.ReadOnly = false;
         }
 
@@ -201,8 +219,8 @@ namespace Space_Impact
 
             //TODO: load level from file
             map = new Map(Constants.map_width, Constants.map_height, 3);
-            pictureBox1.Image = null;
-            pictureBox1.Visible = true;
+            pbGame.Image = null;
+            pbGame.Visible = true;
 
             //TESTING
             PlayerInput.Pause = map.Spawn;
@@ -215,28 +233,29 @@ namespace Space_Impact
             switch (PlayerInput.GetMovementKey())
             {
                 case PlayerInput.Direction.up:
-                    map.player.Up();
+                    map.AddPlayerAction(Map.PlayerAction.up);
                     break;
                 case PlayerInput.Direction.down:
-                    map.player.Down();
+                    map.AddPlayerAction(Map.PlayerAction.down);
+
                     break;
                 case PlayerInput.Direction.right:
-                    map.player.Right();
+                    map.AddPlayerAction(Map.PlayerAction.right);
                     break;
                 case PlayerInput.Direction.left:
-                    map.player.Left();
+                    map.AddPlayerAction(Map.PlayerAction.left);
                     break;
             }
 
-            if (PlayerInput.Attack) map.player.Shoot();
-            if (PlayerInput.SpecialAttack) map.player.SpecialAttack();
+            if (PlayerInput.Attack) map.AddPlayerAction(Map.PlayerAction.attack);
+            if (PlayerInput.SpecialAttack) map.AddPlayerAction(Map.PlayerAction.special_attack);
 
-            map.MapOut(g);
+            map.MapOut(gs,gs2); //TODO: stats display
             this.Text = map.UnitCount().ToString();
 
-            h.DrawImage(canvas, 0, 0, canvas.Width * Constants.scale, canvas.Height * Constants.scale);
-            pictureBox1.Image = render;
-            pictureBox1.Refresh();
+            gs2.DrawImage(game_screen, 0, 0, game_screen.Width * Constants.scale, game_screen.Height * Constants.scale);
+            pbGame.Image = gs_out;
+            pbGame.Refresh();
         }
     }
 }

@@ -4,10 +4,11 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace Space_Impact
 {
-    enum State {pause, fight, spawn, loss, win}
+    
 
     class Rect
     {
@@ -85,15 +86,28 @@ namespace Space_Impact
         public int Health
         {
             get => health;
+            set
+            {
+                map.StatsChanged();
+                health = value;
+            }
         }
-
+        public int SpecialAttacks
+        {
+            get => special_attacks;
+            set
+            {
+                map.StatsChanged();
+                special_attacks = value;
+            }
+        }
         public override void Damage(int rec)
         {
             if (Invincible) return;
-            health -= rec;
+            Health -= rec;
             Invincible = true; 
             invincibility_timer = Constants.player_invincibility_time;
-            if (health <= 0) map.state = State.loss;
+            if (Health <= 0) map.state = Map.State.loss;
         }
 
         public void Up()
@@ -148,21 +162,87 @@ namespace Space_Impact
 
     class Map : Rect
     {
+        public enum State { pause, fight, spawn, loss, win }
+        public enum PlayerAction { up, down, left, right, attack, special_attack }
+
         public State state = State.spawn;
+        List<PlayerAction> player_actions = new List<PlayerAction>();
 
         public Player player;
+        long score;
+        long Score
+        {
+            get => score;
+            set
+            {
+                stats_changed = true;
+                score = value;
+            }
+        }
+        bool stats_changed;
+
+        public void StatsChanged()
+        {
+            stats_changed = true;
+        }
 
         List<MovingObject> list_of_moving = new List<MovingObject>();
 
         public  Map(int w, int h, int p) : base(w,h)
         {
+
+            //TODO: proper init
+            Texture.Load(@"Resources\textures.csv");
             player = new Player(Constants.player_spawn_x, height / 2, p, this);
         }
 
         public Map()
         {
-
         }
+
+
+        #region player handling
+        public void AddPlayerAction(PlayerAction action)
+        {
+            player_actions.Add(action);
+        }
+
+        void RealizePlayerAction(PlayerAction actions)
+        {
+            switch (actions)
+            {
+                case PlayerAction.up:
+                    player.Up();
+                    break;
+                case PlayerAction.down:
+                    player.Down();
+                    break;
+                case PlayerAction.left:
+                    player.Left();
+                    break;
+                case PlayerAction.right:
+                    player.Right();
+                    break;
+                case PlayerAction.attack:
+                    player.Shoot();
+                    break;
+                case PlayerAction.special_attack:
+                    player.SpecialAttack();
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void HandlePlayer()
+        {
+            foreach (PlayerAction action in player_actions)
+            {
+                RealizePlayerAction(action);
+            }
+            player_actions.Clear();
+        }
+        #endregion
 
         public void Add(MovingObject member)
         {
@@ -183,6 +263,8 @@ namespace Space_Impact
             ///new Enemy.BossB(random.Next(0, 70), random.Next(0, 45), this);
         }
 
+
+        #region updating and drawing 
         void MoveAll()
         {
             foreach (MovingObject member in list_of_moving.ToList())
@@ -191,8 +273,13 @@ namespace Space_Impact
             }
         }
 
+       
         void Update()
             {
+
+            HandlePlayer();
+
+
             var list = list_of_moving.ToList();
            
             foreach (MovingObject foo in list)
@@ -210,28 +297,60 @@ namespace Space_Impact
 
         Brush brush = new SolidBrush(Constants.bg_color);
 
-
         void DrawMap(Graphics g)
         {
-            g.FillRectangle(brush, g.ClipBounds);
+            g.Clear(Constants.bg_color);
 
             foreach (MovingObject member in list_of_moving)
             {
                 member.Draw(g);
-                //TESTING
-                //g.DrawRectangle(Pens.Red, member.x, member.y, member.width - 1, member.height- 1);
             }
         }
 
-        public void MapOut(Graphics g)
+        public void MapOut(Graphics g, Graphics h)
         {
             MoveAll();
             DrawMap(g);
             Update();
+            if (stats_changed) DrawStats(h);
+
+        }
+        #endregion
+
+        public void DrawStats(Graphics g)
+        {
+            Bitmap pic;
+            int width;
+
+            pic = Texture.FromKey("heart").Image();
+            width = pic.Width;
+
+            for (int i = 0; i < player.Health; i++)
+            {
+                g.DrawImage(pic, 1, i*(width + 1) + 1);
+            }
+
+            //TODO: max hp -> offset
+
+            int dec = 1;
+            string num;
+            int edge = (int)g.Clip.GetBounds(g).Width;
+
+            for (int i = 0; i < 5; i++)
+            {
+                dec *= 10;
+                num = (score % dec).ToString();
+                pic = Texture.FromKey("num"+num).Image();
+                width = pic.Width;
+                g.DrawImage(pic, (edge - width - 1), 1);
+            }
+
+            stats_changed = false;
         }
 
         public int UnitCount() => list_of_moving.Count;
     }
+
 
     class MovingObject : Rect
     {
@@ -301,11 +420,94 @@ namespace Space_Impact
             map.Add(this);
         }
 
+        public MovingObject(string key, Map map, Behaviour behaviour, Visuals visuals, int health, int damage, bool invincible, bool friendly, bool ignores_projectiles, int despawn_timer, int shoot_xoff, int shoot_yoff)
+        {
+            this.key = key;
+            this.map = map;
+            this.behaviour = behaviour;
+            this.visuals = visuals;
+            this.health = health;
+            this.damage = damage;
+            this.invincible = invincible;
+            this.friendly = friendly;
+            this.ignores_projectiles = ignores_projectiles;
+            this.despawn_timer = despawn_timer;
+            this.shoot_xoff = shoot_xoff;
+            this.shoot_yoff = shoot_yoff;
+        }
+
+       
     }
 
     
-    static class NPC
+    class NPC
     {
+        struct NPCStats
+        {
+            int width;
+            int height;
+            int health;
+            int score; //TODO
+            bool friendly;
+            bool invincible;
+            bool ignores_projectiles;
+            string visuals_key;
+            string behaviour_key;
+            int shoot_xoff;
+            int shoot_yoff;
+
+            public NPCStats(int width, int height, int health, int score, bool friendly, bool invincible, bool ignores_projectiles, string visuals_key, string behaviour_key, int shoot_xoff, int shoot_yoff)
+            {
+                this.width = width;
+                this.height = height;
+                this.health = health;
+                this.score = score;
+                this.friendly = friendly;
+                this.invincible = invincible;
+                this.ignores_projectiles = ignores_projectiles;
+                this.visuals_key = visuals_key;
+                this.behaviour_key = behaviour_key;
+                this.shoot_xoff = shoot_xoff;
+                this.shoot_yoff = shoot_yoff;
+            }
+        }
+        static Dictionary<string,NPCStats> default_npc_stats = new Dictionary<string,NPCStats>();
+
+        public static void LoadNPCData(string path)
+        {
+            string[] lines = System.IO.File.ReadAllLines(path);
+            string[] fields;
+
+            foreach (string line in lines)
+            {
+                try
+                {
+                    fields = line.Split(',');
+                    default_npc_stats[fields[0]] = new NPCStats(
+                        int.Parse(fields[1]),
+                        int.Parse(fields[2]),
+                        int.Parse(fields[3]),
+                        int.Parse(fields[4]),
+                        bool.Parse(fields[5]),
+                        bool.Parse(fields[6]),
+                        bool.Parse(fields[7]),
+                        fields[8],
+                        fields[9],
+                        int.Parse(fields[10]),
+                        int.Parse(fields[11])
+                        );
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show("Nastala chyba při načítání databáze NPC");
+                }
+            }
+        }
+
+        public static void Spawn(Map m, int x, int y, int h, string key, string beh)
+        {
+
+        }
 
         public class Jelly : MovingObject
         {
@@ -471,392 +673,5 @@ namespace Space_Impact
         {
            //TODO: movement = new Movement.Linear(1, 2, this);
         }
-    }
-    
-
-    abstract class Movement
-    {
-        public bool ended;
-        public virtual void Move(MovingObject parent) { }
-
-        public class Linear : Movement
-        {
-            int hor_speed, ver_speed;
-            int reverse, temp = 0;
-            bool wiggle = false;
-            bool up = true;
-
-            public override void Move(MovingObject parent)
-            {
-
-                if (wiggle)
-                {
-                    if (up) parent.y -= ver_speed;
-                    else parent.y += ver_speed;
-                }
-                parent.x -= hor_speed;
-                temp++;
-
-                if (temp >= reverse || parent.OnEdgeOf(parent.map))
-                {
-                    temp = 0;
-                    up = !up;
-                }
-            }
-            public Linear(int s)
-            {
-                hor_speed = s;
-            }
-            public Linear(int s, int rev)
-            {
-                hor_speed = s;
-                ver_speed = s;
-                reverse = rev;
-                wiggle = true;
-            }
-            public Linear(int hs, int ws, int rev)
-            {
-                hor_speed = hs;
-                ver_speed = ws;
-                reverse = rev;
-                wiggle = true;
-            }
-        }
-
-        public class General : Movement
-        {
-            int x_pos, y_pos;
-            int[] x;
-            int[] y;
-            int i = 1;
-
-            public General(int[] x, int[] y)
-            {
-                this.x = x;
-                this.y = y;
-            }
-
-            public General()
-            {
-            }
-
-            public override void Move(MovingObject parent)
-            {
-                ended = false;
-
-                if (x != null) 
-                {
-                    parent.x -= i*x[x_pos];
-                    x_pos++;
-                    x_pos %= x.Length;
-
-                    // (x_pos == 0 && (y != null => x.Length >= y.Length))
-                    // tuto implikaci zapíšeme pomocí negace
-                    if (x_pos == 0 && !(y != null && !(x.Length >= y.Length))) ended = true;
-                }
-                if (y != null)
-                {
-                    parent.y -= i*y[y_pos];
-                    y_pos++;
-                    y_pos %= y.Length;
-
-                    if (y_pos == 0 && !(x != null && !(y.Length >= x.Length))) ended = true;
-                }
-
-            }
-
-            public void Reverse()
-            {
-                if (x != null) 
-                {
-                   // x_pos = x.Length - x_pos - 1 ;
-                    Array.Reverse(x); 
-                }
-                if (y != null)
-                {
-                    //y_pos = y.Length - y_pos - 1;
-                    Array.Reverse(y); 
-                }
-
-                i = -i;
-            }
-
-            public static General OnlyX(params int[] steps)
-            {
-                General a = new General();
-                a.x = steps;
-                return a;
-            }
-            public static General OnlyY(params int[] steps)
-            {
-                General a = new General();
-                a.y = steps;
-                return a;
-            }
-        }
-
-
-
-    }
-
-
-    abstract class Behaviour
-        //tato třída spravuje chování nepřátel, projektilů a dalších jednotek - tedy pohyb a střelbu
-    {
-        static Dictionary<string, Behaviour> Data;
-
-        public static Behaviour FromKey(string key)
-        {
-            Behaviour test;
-            Data.TryGetValue(key, out test);
-            return test;
-        }
-
-        public virtual void Update(MovingObject parent) { }
-
-        public class OnlyMoving : Behaviour
-        {
-            protected Movement movement;
-
-            public override void Update(MovingObject parent)
-            {
-                movement.Move(parent);
-            }
-
-            public OnlyMoving(Movement mov)
-            {
-                movement = mov;
-            }
-        }
-      
-        public class Shooting : OnlyMoving
-        {
-
-            int shoot_interval, si_temp;
-
-            public Shooting(Movement mov, int shoot_interval) : base(mov)
-            {
-                this.shoot_interval = shoot_interval;
-            }
-
-            public override void Update(MovingObject parent)
-            {
-                if (movement != null)
-                movement.Move(parent);
-
-                si_temp--;
-                if (si_temp <= 0)
-                {
-                    si_temp = shoot_interval;
-                    parent.Shoot();
-                }
-            }
-        }
-
-        public class BossB : Behaviour
-        {
-            Behaviour phase;
-            Behaviour.OnlyMoving entry;
-            Behaviour.Shooting stable;
-
-            public override void Update(MovingObject parent)
-            {
-                if (phase == entry && parent.map.right > parent.right) phase = stable;
-                phase.Update(parent);
-            }
-
-            public BossB(Movement mov, Shooting sh)
-            {
-                entry = new OnlyMoving(mov);
-                stable = sh;
-                phase = entry;
-            }
-        }
-
-        public class BossA : Behaviour
-        {
-            Movement entry, stable;
-            Movement.General charge;
-            enum Phase { entry, stable, charge, pause, retreat }
-            Phase phase = Phase.entry;
-
-            int stable_time; //= GameData.bossB_stable_time;
-            int pause_time = 50;
-            int timer;
-            public override void Update(MovingObject parent)
-            {
-                switch (phase)
-                {
-                    case Phase.entry:
-                        entry.Move(parent);
-                        if (parent.map.right > parent.right)
-                        {
-                            
-                            phase = Phase.stable;
-                        }
-                        break;
-                    case Phase.stable:
-                        stable.Move(parent);
-                        timer++;
-                        if (timer >= stable_time)
-                        {
-                            phase = Phase.charge;
-                            
-                            timer = 0;
-                        }
-
-
-                        break;
-                    case Phase.charge:
-                        charge.Move(parent);
-                        if (charge.ended == true)
-                        {
-                            phase = Phase.pause;
-                            charge.Reverse();
-                        }
-                        break;
-                    case Phase.pause:
-
-                        timer++;
-                        if (timer >= pause_time)
-                        {
-                            phase = Phase.retreat;
-                        }
-
-                        break;
-                    case Phase.retreat:
-
-                        charge.Move(parent);
-                        if (charge.ended == true)
-                        {
-                            phase = Phase.stable;
-                            charge.Reverse();
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-
-            public BossA(Movement entry, Movement stable, int stable_time, Movement.General charge)
-            {
-                this.entry = entry;
-                this.stable = stable;
-                this.charge = charge;
-                this.stable_time = stable_time;
-            }
-
-          
-        }
-    }
-
-    public class Texture
-    {
-        static Dictionary<string, Texture> Data;
-        public int offx, offy;
-        public List<Bitmap> images;
-
-        public Texture(int x, int y, params string[] file_names)
-        {
-            offx = x;
-            offy = y;
-            images = new List<Bitmap>();
-            foreach (string name in file_names)
-            {
-                images.Add((Bitmap)Bitmap.FromFile(name));
-            }
-        }
-
-        static public Texture FromKey(string key)
-        {
-            return Data[key];
-        }
-
-        public static void Load(string file)
-        {
-            List<string> fields;
-            string name;
-            int xoff, yoff;
-
-
-            string[] lines = System.IO.File.ReadAllLines(file);
-            foreach(string line in lines)
-            {
-
-                fields = line.Split(';').ToList();
-                name = fields[0];
-                xoff = int.Parse(fields[1]);
-                yoff = int.Parse(fields[2]);
-                fields.RemoveRange(0, 3);
-                Data.Add(fields.First(), new Texture(xoff, yoff, fields.ToArray()));
-            }
-        }
-    }
-
-    class Visuals
-    {
-        bool loop = true;
-        int delay = Constants.graphics_flash_interval, tick;
-        int image;
-        Texture data;
-
-        public void Draw(MovingObject parent, Graphics sender)
-        {
-            if (data != null)
-            sender.DrawImage(data.images[image], parent.x + data.offx, parent.y + data.offy);
-            if (loop)
-            {
-                tick++;
-                tick %= delay;
-
-                if (tick == 0) Next();
-            }
-        }
-
-        public void Next()
-        {
-            image++;
-            image %= data.images.Count();
-        }
-
-        public void Stop()
-        {
-            loop = false;
-        }
-
-        public Visuals(Texture t)
-        {
-            data = t;
-        }
-    }
-
-    public static class Constants
-    {
-        public const int player_width = 6;
-        public const int player_height = 5;
-        public const int player_spawn_x = 5;
-        public const int player_attack_xoff = 6;
-        public const int player_attack_yoff = 2;
-        public const int player_invincibility_time = 50;
-        public const int player_attack_cooldown = 10;
-
-        public const int map_width = 75;
-      
-        public const int despawn_time = 10;
-        public const int map_height = 45;
-        public const int scale = 18;
-        public static Color bg_color = Color.FromArgb(133, 178, 149);
-
-        public const int graphics_flash_interval = 10;
-
-        public static int projectile_width = 3;
-        public static int projectile_height = 1;
-        public static int normal_attack_dmg = 1;
-
-        public const int bossB_stable_time = 40;
-        public static int[] basket_ymovement = new int[] 
-        { 2, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, -1, 0, -1, 0, -1, -1, -1, -2, -2, -1, -1, -1, 0, -1, -1, 0, -1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 2 };
-        public static int[] basket_xmovement = new int[] {1};
     }
 }
